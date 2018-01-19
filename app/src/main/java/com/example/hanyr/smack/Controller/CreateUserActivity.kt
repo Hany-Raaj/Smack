@@ -1,9 +1,11 @@
-package com.example.hanyr.smack
+package com.example.hanyr.smack.Controller
 
 import android.graphics.Color
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
+import com.example.hanyr.smack.R
+import com.example.hanyr.smack.Services.AuthServices
 import kotlinx.android.synthetic.main.activity_create_user.*
 import java.util.*
 
@@ -32,7 +34,18 @@ class CreateUserActivity : AppCompatActivity() {
         CreateAvatarImageView.setImageResource(resourceId)
     }
     fun CreateUserClicked(view: View){
-
+        val Email = CreateEmailText.text.toString()
+        val Password = CreatePasswordText.text.toString()
+        AuthServices.registerUser(this, Email, Password){registerSuccess ->
+            if (registerSuccess){
+                AuthServices.loginUser(this, Email, Password){loginSuccess ->
+                    if (loginSuccess){
+                        println(AuthServices.authToken)
+                        println(AuthServices.userEmail)
+                    }
+                }
+            }
+        }
     }
 
     fun GenerateColorClicked(view: View){
