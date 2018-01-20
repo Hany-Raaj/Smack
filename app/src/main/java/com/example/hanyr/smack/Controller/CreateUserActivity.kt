@@ -69,12 +69,12 @@ class CreateUserActivity : AppCompatActivity() {
                 }
             }
         }else{
-            Toast.makeText(this, "Something went wrong, please try again.", Toast.LENGTH_LONG)
+            Toast.makeText(this, "Something went wrong, please try again.", Toast.LENGTH_LONG).show()
             enableSpinner(false)
         }
     }
     fun errorToast(){
-        Toast.makeText(this, "Make sure user name, email and password are filled in.", Toast.LENGTH_LONG)
+        Toast.makeText(this, "Make sure user name, email and password are filled in.", Toast.LENGTH_LONG).show()
         enableSpinner(false)
     }
 
