@@ -1,6 +1,7 @@
 package com.example.hanyr.smack.Services
 
 import android.graphics.Color
+import com.example.hanyr.smack.Controller.App
 import java.util.*
 
 /**
@@ -19,9 +20,9 @@ object UserDataService {
         avatarName = ""
         email = ""
         name = ""
-        AuthServices.authToken = ""
-        AuthServices.userEmail = ""
-        AuthServices.isLoggedIn = false
+        App.prefs.authToken = ""
+        App.prefs.userEmail = ""
+        App.prefs.isLoggedIn = false
     }
 
     fun returnAvatarColor(components: String): Int {
