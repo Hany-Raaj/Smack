@@ -11,11 +11,14 @@ import android.support.v4.view.GravityCompat
 import android.support.v7.app.ActionBarDrawerToggle
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
+import android.support.v7.widget.LinearLayoutManager
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
 import android.widget.EditText
+import com.example.hanyr.smack.Adapters.MessageAdapter
 import com.example.hanyr.smack.Model.Channel
+import com.example.hanyr.smack.Model.Message
 import com.example.hanyr.smack.R
 import com.example.hanyr.smack.Services.AuthServices
 import com.example.hanyr.smack.Services.MessageService
@@ -33,17 +36,27 @@ class MainActivity : AppCompatActivity() {
 
     val socket = IO.socket(SOCKEt_URL)
     lateinit var channelAdapter: ArrayAdapter<Channel>
+    lateinit var messageAdapter: MessageAdapter
     var selectedChannel: Channel? = null
 
     private fun setupAdapters(){
         channelAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, MessageService.channels)
         channel_list.adapter = channelAdapter
+
+        messageAdapter = MessageAdapter(this, MessageService.messages)
+        messageListView.adapter = messageAdapter
+        val layoutManager = LinearLayoutManager(this)
+        messageListView.layoutManager = layoutManager
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
+        socket.connect()
+        socket.on("channelCreated", onNewChannel)
+        socket.on("messageCreated", onNewMessage)
+
 
         val toggle = ActionBarDrawerToggle(
                 this, drawer_layout, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close)
@@ -55,7 +68,6 @@ class MainActivity : AppCompatActivity() {
             drawer_layout.closeDrawer(GravityCompat.START)
             updateWithChannel()
         }
-
         if (App.prefs.isLoggedIn){
             AuthServices.findUserByEmail(this){
 
@@ -95,6 +107,7 @@ class MainActivity : AppCompatActivity() {
                         if (MessageService.channels.count() > 0 ){
                             selectedChannel = MessageService.channels[0]
                             channelAdapter.notifyDataSetChanged()
+                            updateWithChannel()
                         }
                         channelAdapter.notifyDataSetChanged()
                     }
@@ -105,9 +118,19 @@ class MainActivity : AppCompatActivity() {
 
     fun updateWithChannel(){
         mainChannelName.text = "#${selectedChannel?.name}"
+        if(selectedChannel != null){
+             MessageService.getMessages(selectedChannel!!.id){ complete  ->
+                 if(complete){
+                     messageAdapter.notifyDataSetChanged()
+                     if (messageAdapter.itemCount > 0){
+                         messageListView.smoothScrollToPosition(messageAdapter.itemCount -1)
+                     }
+                 }
+             }
+        }
     }
 
-    override fun onBackPressed() {
+   override fun onBackPressed() {
         if (drawer_layout.isDrawerOpen(GravityCompat.START)) {
             drawer_layout.closeDrawer(GravityCompat.START)
         } else {
@@ -119,6 +142,8 @@ class MainActivity : AppCompatActivity() {
 
         if (App.prefs.isLoggedIn){
             UserDataService.logout()
+            channelAdapter.notifyDataSetChanged()
+            messageAdapter.notifyDataSetChanged()
             userNameNavHeader.text = ""
             userEmailNavHeader.text = ""
             userimageNavHeader.setImageResource(R.drawable.profiledefault)
@@ -152,19 +177,51 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val onNewChannel = Emitter.Listener {args ->
-        runOnUiThread {
-            val channelName = args[0] as String
-            val channelDescription = args[1] as String
-            val channelId = args[2] as String
+        if (App.prefs.isLoggedIn){
+            runOnUiThread {
 
-            val newChannel = Channel(channelName, channelDescription, channelId)
-            MessageService.channels.add(newChannel)
-            channelAdapter.notifyDataSetChanged()
+                val channelName = args[0] as String
+                val channelDescription = args[1] as String
+                val channelId = args[2] as String
+
+                val newChannel = Channel(channelName, channelDescription, channelId)
+                MessageService.channels.add(newChannel)
+                channelAdapter.notifyDataSetChanged()
+            }
+        }
+    }
+
+    private val onNewMessage = Emitter.Listener {args ->
+        runOnUiThread {
+            val channelId = args [2] as String
+            if (channelId == selectedChannel?.id) {
+                val msgBody = args[0] as String
+
+                val userName = args[3] as String
+                val userAvatar = args[4] as String
+                val userAvatarColor = args[5] as String
+                val id = args[6] as String
+                val timestamp = args[7] as String
+
+                val newMessage = Message(msgBody, channelId, userName, userAvatar,
+                        userAvatarColor, id, timestamp)
+                MessageService.messages.add(newMessage)
+                messageAdapter.notifyDataSetChanged()
+                messageListView.smoothScrollToPosition(messageAdapter.itemCount -1)
+            }
         }
     }
 
     fun sendMessageBtn (view: View){
-        hideKeyboard()
+        if (App.prefs.isLoggedIn && messageTextField.text.isNotEmpty()
+        && selectedChannel!= null){
+            val userId = UserDataService.id
+            val channelId = selectedChannel!!.id
+            socket.emit("newMessage", messageTextField.text.toString(),userId,
+                    channelId, UserDataService.name, UserDataService.avatarName, UserDataService.avatarColor)
+            messageTextField.text.clear()
+            hideKeyboard()
+        }
     }
     fun hideKeyboard(){
         val inputManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
