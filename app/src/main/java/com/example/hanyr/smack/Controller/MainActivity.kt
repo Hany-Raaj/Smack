@@ -26,12 +26,14 @@ import io.socket.client.IO
 import io.socket.emitter.Emitter
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.app_bar_main.*
+import kotlinx.android.synthetic.main.content_main.*
 import kotlinx.android.synthetic.main.nav_header_main.*
 
 class MainActivity : AppCompatActivity() {
 
     val socket = IO.socket(SOCKEt_URL)
     lateinit var channelAdapter: ArrayAdapter<Channel>
+    var selectedChannel: Channel? = null
 
     private fun setupAdapters(){
         channelAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, MessageService.channels)
@@ -48,6 +50,11 @@ class MainActivity : AppCompatActivity() {
         drawer_layout.addDrawerListener(toggle)
         toggle.syncState()
         setupAdapters()
+        channel_list.setOnItemClickListener{ _, _, i, _ ->
+            selectedChannel = MessageService.channels[i]
+            drawer_layout.closeDrawer(GravityCompat.START)
+            updateWithChannel()
+        }
 
         if (App.prefs.isLoggedIn){
             AuthServices.findUserByEmail(this){
@@ -85,11 +92,19 @@ class MainActivity : AppCompatActivity() {
 
                 MessageService.getChannels(context){ complete ->
                     if (complete){
+                        if (MessageService.channels.count() > 0 ){
+                            selectedChannel = MessageService.channels[0]
+                            channelAdapter.notifyDataSetChanged()
+                        }
                         channelAdapter.notifyDataSetChanged()
                     }
                 }
             }
         }
+    }
+
+    fun updateWithChannel(){
+        mainChannelName.text = "#${selectedChannel?.name}"
     }
 
     override fun onBackPressed() {
@@ -121,7 +136,7 @@ class MainActivity : AppCompatActivity() {
             val dialogView = layoutInflater.inflate(R.layout.add_channel_dialog, null)
 
             builder.setView(dialogView)
-                    .setPositiveButton("Add"){ dialogInterface, i ->
+                    .setPositiveButton("Add"){_, _ ->
                         val nameTxtField = dialogView.findViewById<EditText>(R.id.addChannelNameTxt)
                         val descTxtField = dialogView.findViewById<EditText>(R.id.addChannelDescTxt)
                         val channelName = nameTxtField.text.toString()
@@ -129,7 +144,7 @@ class MainActivity : AppCompatActivity() {
 
                         socket.emit("newChannel", channelName, channelDesc)
                     }
-                    .setNegativeButton("Cancel"){dialogInterface, i ->
+                    .setNegativeButton("Cancel"){_, _ ->
 
                     }
                     .show()

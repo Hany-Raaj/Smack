@@ -46,11 +46,11 @@ class CreateUserActivity : AppCompatActivity() {
         val Password = CreatePasswordText.text.toString()
 
         if (UserName.isNotEmpty() && Email.isNotEmpty() && Password.isNotEmpty()){
-            AuthServices.registerUser(this, Email, Password) { registerSuccess ->
+            AuthServices.registerUser(Email, Password) { registerSuccess ->
                 if (registerSuccess) {
-                    AuthServices.loginUser(this, Email, Password) { loginSuccess ->
+                    AuthServices.loginUser(Email, Password) { loginSuccess ->
                         if (loginSuccess) {
-                            AuthServices.createUser(this, UserName, Email, userAvatar, avatarColor) { createSuccess ->
+                            AuthServices.createUser(UserName, Email, userAvatar, avatarColor) { createSuccess ->
                                 if (createSuccess) {
                                     val userDataChange = Intent(BROADCAST_USER_DATA_CHANGE)
                                     LocalBroadcastManager.getInstance(this).sendBroadcast(userDataChange)
